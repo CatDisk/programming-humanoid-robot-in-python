@@ -20,8 +20,12 @@
 '''
 
 
+from pickle import NONE
 from pid import PIDAgent
 from keyframes import hello
+from keyframes import wipe_forehead
+
+import numpy as np
 
 
 class AngleInterpolationAgent(PIDAgent):
@@ -32,6 +36,7 @@ class AngleInterpolationAgent(PIDAgent):
                  sync_mode=True):
         super(AngleInterpolationAgent, self).__init__(simspark_ip, simspark_port, teamname, player_id, sync_mode)
         self.keyframes = ([], [], [])
+        self.startTime = -1
 
     def think(self, perception):
         target_joints = self.angle_interpolation(self.keyframes, perception)
@@ -40,7 +45,42 @@ class AngleInterpolationAgent(PIDAgent):
 
     def angle_interpolation(self, keyframes, perception):
         target_joints = {}
-        # YOUR CODE HERE
+        if self.startTime == -1:
+            print("setting startTime")
+            self.startTime = perception.time
+        # organize keyframe data
+        names = keyframes[0]
+        times = keyframes[1]
+        keys = keyframes[2]
+        time = perception.time - self.startTime
+        #go though each limb
+        
+        for i in range(len(names)):
+            if time <= times[i][0] or time >= times[i][-1]:
+                if (perception.joint.get(names[i]) != None): # catch that key error
+                    target_joints[names[i]] = perception.joint[names[i]]
+            else:
+                t = 0
+                while time > times[i][t]:
+                    t += 1
+                '''
+                Points for Bezier interpolation:
+                    pZero: starting point
+                    pOne: forwards handle of starting point
+                    pTwo: backwards handle of end point
+                    pThree: end point
+                    t: 'weight' of current time between 2 given time points
+                '''
+                pZero = (keys[i][t - 1][0], times[i][t - 1])
+                pOne = (keys[i][t -1][2][1] + pZero[0], keys[i][t - 1][2][2] + pZero[1])
+                pThree = (keys[i][t][0], times[i][t])
+                pTwo = (keys[i][t][1][1] + pThree[0], keys[i][t][1][2] + pThree[1])
+                t = (time - pZero[1]) / (pThree[1] - pZero[1])
+
+                limb_angle = np.power(1-t, 3)*pZero[0] + 3*np.power(1-t, 2)*t*pOne[0] + 3*(1-t)*np.power(t, 2)*pTwo[0] + np.power(t, 3)*pThree[0]
+                
+                if (perception.joint.get(names[i]) != None): # catch that key error
+                    target_joints[names[i]] = limb_angle
 
         return target_joints
 
