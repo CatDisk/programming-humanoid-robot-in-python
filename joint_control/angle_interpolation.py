@@ -80,6 +80,7 @@ class AngleInterpolationAgent(PIDAgent):
                 limb_angle = np.power(1-t, 3)*pZero[0] + 3*np.power(1-t, 2)*t*pOne[0] + 3*(1-t)*np.power(t, 2)*pTwo[0] + np.power(t, 3)*pThree[0]
                 
                 if (perception.joint.get(names[i]) != None): # catch that key error
+                    #target_joints[names[i]] = pZero[0]
                     target_joints[names[i]] = limb_angle
 
         return target_joints
